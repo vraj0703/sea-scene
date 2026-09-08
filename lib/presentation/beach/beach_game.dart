@@ -5,11 +5,12 @@ import 'package:flame/events.dart';
 import 'package:flame/game.dart';
 import 'package:sea_scene/domain/audio/app_audio.dart';
 import 'package:sea_scene/domain/beach/beach_config.dart';
+import 'package:sea_scene/data/di/injection.dart';
+import 'package:sea_scene/data/shaders/shader_library.dart';
 import 'package:sea_scene/domain/interfaces/queuer.dart';
 import 'package:sea_scene/domain/models/loading_phase.dart';
 import 'package:sea_scene/presentation/beach/beach_background.dart';
 import 'package:sea_scene/presentation/beach/beach_weather.dart';
-import 'package:sea_scene/presentation/beach/title_plate.dart';
 import 'package:sea_scene/presentation/bloc/scene_bloc.dart';
 
 /// The beach, running.
@@ -34,8 +35,6 @@ class BeachGame extends FlameGame with TapCallbacks {
 
   late final BeachBackground background;
 
-  final AmbientStorm _storm = AmbientStorm();
-
   /// How many frames have been drawn since the scene was assembled.
   ///
   /// The priming phase waits on this. A shader's pipeline is compiled the
@@ -46,32 +45,33 @@ class BeachGame extends FlameGame with TapCallbacks {
 
   bool _primed = false;
 
-  /// The name currently on the plate, so a resize can be told from a rebuild.
-  Future<void>? _painting;
-
-  /// How gathered the storm is, `0`..`1`.
+  /// How close the storm has come, `0`..`1`.
   ///
-  /// Nothing drives it upward yet — the previous site tied it to scroll — so
-  /// it sits at a steady drizzle. It is a field rather than a constant because
-  /// every part of the storm already reads from it: the bed's level, the
-  /// strike's force, and how far behind the flash the roll arrives.
-  double gathering = 0.35;
+  /// Climbs a little with each card the visitor turns over, so the fourth
+  /// answer is nearer than the first. It shapes both halves of a strike — how
+  /// hard the crack lands and how soon the roll follows it — which is what
+  /// makes the storm read as approaching rather than as a louder setting.
+  double gathering = 0.3;
+
+  /// How much closer each press brings it.
+  static const double gatheringPerStrike = 0.12;
 
   @override
   Future<void> onLoad() async {
     await super.onLoad();
 
-    final program = await FragmentProgram.fromAsset(
-      'assets/shaders/beach.frag',
-    );
+    // Both shaders, together: the name is drawn by a widget that has no game
+    // to ask, so waiting for its program here is what lets the curtain cover
+    // the compiling of both.
+    final shaders = locate<ShaderLibrary>();
+    await shaders.load();
     _report(LoadingPhase.shader, 1);
 
-    background = BeachBackground(shader: program.fragmentShader(), size: size)
-      ..opacity = 1
-      ..setWaterLevel(BeachConfig.horizonFor(size.y));
+    background =
+        BeachBackground(shader: shaders.beach!.fragmentShader(), size: size)
+          ..opacity = 1
+          ..setWaterLevel(BeachConfig.horizonFor(size.y));
     await add(background);
-
-    _paintTitle();
 
     // Not awaited against the bar's own completion — the cues are small and
     // the phase is reported when they land, whenever that is.
@@ -81,49 +81,6 @@ class BeachGame extends FlameGame with TapCallbacks {
   Future<void> _warmAudio() async {
     await audio.preload();
     _report(LoadingPhase.audio, 1);
-
-    // The sea comes up with the scene and stays. Held under everything for
-    // as long as the beach is on screen, which is what stops the gaps between
-    // thunderclaps sounding like a photograph.
-    await audio.bed(AudioCue.sea, _seaLevel);
-  }
-
-  /// How loud the sea runs, for how gathered the storm is.
-  ///
-  /// Never silent and never at the top: a bed that reaches full is a bed that
-  /// has nowhere left to go when the weather turns.
-  double get _seaLevel => 0.35 + gathering * 0.45;
-
-  /// Repaints the name for the current viewport.
-  ///
-  /// Guarded against overlapping work: a drag-resize delivers a resize a
-  /// frame, and each one rasterises type. Without this the second painting
-  /// would race the first and whichever finished last would win, which is not
-  /// necessarily the one that matches the window.
-  void _paintTitle() {
-    if (_painting != null) return;
-
-    final viewport = Size(size.x, size.y);
-    if (viewport.isEmpty) return;
-
-    _painting = TitlePlate.paint(
-      text: title,
-      size: viewport,
-      waterY: BeachConfig.horizonFor(viewport.height),
-    ).then((plate) {
-      _painting = null;
-
-      // The window may have moved on while the type was being drawn. Rather
-      // than show a plate cut for a viewport that no longer exists, throw it
-      // away and paint the one that does.
-      if (!plate.fits(Size(size.x, size.y))) {
-        plate.dispose();
-        _paintTitle();
-        return;
-      }
-
-      background.showTitle(plate);
-    });
   }
 
   @override
@@ -132,7 +89,17 @@ class BeachGame extends FlameGame with TapCallbacks {
     if (!isLoaded) return;
 
     background.setWaterLevel(BeachConfig.horizonFor(size.y));
-    _paintTitle();
+  }
+
+  /// Hands the water a fresh photograph of the cards.
+  void reflect(Image image) {
+    if (!isLoaded) {
+      // Nothing to give it to yet. Released rather than held, or the first
+      // few captures leak until the scene catches up.
+      image.dispose();
+      return;
+    }
+    background.reflect(image);
   }
 
   @override
@@ -147,17 +114,25 @@ class BeachGame extends FlameGame with TapCallbacks {
       if (_drawn >= primingFrames) _primed = true;
     }
 
-    if (_storm.update(dt)) _flash();
   }
 
   /// A strike, with its roll following at a distance.
   ///
-  /// The gap between the two is how far away the storm reads as being, so the
-  /// roll is scheduled rather than played with the flash — sound is slower
-  /// than light, and a thunderclap that arrives with the light is a lamp.
-  void _flash() {
+  /// Fired by the cards and by nothing else. The sky used to flash on its own
+  /// every six to fifteen seconds, which made the storm ambient — and ambient
+  /// thunder is weather happening *to* the visitor rather than because of
+  /// them. Tied to a press it becomes an answer: they turned a card over, and
+  /// the sky replied.
+  ///
+  /// The gap between flash and roll is how far away the storm reads as being,
+  /// so the roll is scheduled rather than played with the light. Sound is
+  /// slower than light, and a thunderclap that arrives with the flash is a
+  /// lamp rather than a storm.
+  void strike() {
     final force = background.lightning.strike();
     if (force == null) return;
+
+    gathering = (gathering + gatheringPerStrike).clamp(0.0, 1.0);
 
     // The crack carries the storm's distance in its level, and the roll
     // carries it in its lag. Both, because either alone reads as a volume

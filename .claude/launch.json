@@ -13,7 +13,8 @@
         "--web-port",
         "8802"
       ],
-      "port": 8802
+      "port": 8802,
+      "autoPort": false
     }
   ]
 }

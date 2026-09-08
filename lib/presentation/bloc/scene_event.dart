@@ -12,6 +12,11 @@ class LoadingProgressed extends SceneEvent {
   final double value;
 }
 
+/// The visitor has asked to come in.
+class EntryRequested extends SceneEvent {
+  const EntryRequested();
+}
+
 /// The curtain is fully open and the beach has the screen.
 ///
 /// Its own event rather than a timer, because what follows it — the title

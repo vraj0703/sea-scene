@@ -64,7 +64,11 @@ abstract final class BeachConfig {
   /// pixel on the screen as infinitely deep, clamps, and returns no
   /// reflection at all: the sea looks right and mirrors nothing. Convert
   /// before setting it.
-  static const double horizonFraction = 0.45;
+  /// Six tenths down, as the previous site had it. Not a free choice: the
+  /// cards stand at four tenths, and the shader only reflects what is *above*
+  /// the waterline. With the horizon higher than the cards they were standing
+  /// in the sea, and the water had nothing over it to mirror.
+  static const double horizonFraction = 0.6;
 
   /// The horizon in logical pixels, for a viewport [height] tall.
   static double horizonFor(double height) => height * horizonFraction;
@@ -78,7 +82,7 @@ abstract final class BeachConfig {
   /// reflection is dimmed here rather than the title being dimmed on screen:
   /// this is the one number that separates the two, which is what
   /// `uTextOpacity` is for.
-  static const double reflectionStrength = 0.22;
+  static const double reflectionStrength = 0.4;
 
   /// How fast a strike fades, in units of intensity a second.
   ///

@@ -9,6 +9,9 @@ abstract class AppStrings {
   String get loadingLabel;
   String loadingPercent(double progress);
 
+  /// What the curtain says once there is something behind it worth opening.
+  String get tapToEnter;
+
   /// The name written across the horizon, and mirrored in the water under it.
   String get title;
 }
@@ -18,6 +21,9 @@ class DefaultAppStrings implements AppStrings {
 
   @override
   String get loadingLabel => 'LOADING...';
+
+  @override
+  String get tapToEnter => 'TAP TO ENTER';
 
   /// Always three digits, so the readout does not change width as it counts
   /// and drag the label around with it.

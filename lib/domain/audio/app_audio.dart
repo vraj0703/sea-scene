@@ -11,18 +11,19 @@ import 'package:flutter/material.dart';
 /// meant to sound like playing it, so the cues keep their order rather than
 /// being one "card" sound repeated.
 enum AudioCue {
-  /// The title arriving out of the water.
-  arrival,
-
-  /// Each card settling into the sand, in the order they land.
+  /// The six things that arrive, in the order they arrive.
+  ///
+  /// A rising scale played by the scene assembling itself: the mark, the
+  /// name, then the four cards. They are named for what arrives rather than
+  /// for the note, so the scale can be re-voiced without touching a call
+  /// site — see `EntrySequence` for the order and `FlameAppAudio` for which
+  /// note each one currently sounds.
+  mark,
+  title,
   cardOne,
   cardTwo,
   cardThree,
   cardFour,
-
-  /// A card turning over. Fired at the halfway point of the flip, where the
-  /// edge is toward the viewer and there is nothing to look at.
-  flip,
 
   /// A card being followed out to wherever it points.
   follow,
@@ -34,13 +35,6 @@ enum AudioCue {
   /// storm has come.
   thunderCrack,
   thunderRoll,
-
-  /// The sea itself, running under everything for as long as the scene is up.
-  ///
-  /// Looped rather than fired. It is the one sound that is not an event: a
-  /// beach with no sound between thunderclaps is a photograph, and a bed that
-  /// has to be re-triggered is a bed with seams in it.
-  sea,
 
   /// A drop striking the water, and the ring it leaves.
   drop,
@@ -55,16 +49,15 @@ enum AudioCue {
 /// reliable moment to do it.
 extension AudioCueLength on AudioCue {
   Duration get length => switch (this) {
-    AudioCue.arrival => const Duration(milliseconds: 1800),
+    AudioCue.mark => const Duration(milliseconds: 1800),
+    AudioCue.title => const Duration(milliseconds: 1800),
     AudioCue.cardOne => const Duration(milliseconds: 1800),
     AudioCue.cardTwo => const Duration(milliseconds: 1800),
     AudioCue.cardThree => const Duration(milliseconds: 1800),
     AudioCue.cardFour => const Duration(milliseconds: 1800),
-    AudioCue.flip => const Duration(milliseconds: 900),
-    AudioCue.follow => const Duration(milliseconds: 1800),
+    AudioCue.follow => const Duration(milliseconds: 2000),
     AudioCue.thunderCrack => const Duration(milliseconds: 2400),
     AudioCue.thunderRoll => const Duration(milliseconds: 4000),
-    AudioCue.sea => const Duration(milliseconds: 3000),
     AudioCue.drop => const Duration(milliseconds: 900),
   };
 }
@@ -86,17 +79,6 @@ abstract class AppAudio {
 
   /// Plays [cue], if sound is on and the asset is available.
   void play(AudioCue cue, {double? volume});
-
-  /// Holds [cue] under the scene at [level], `0`..`1`.
-  ///
-  /// Zero stops it. Anything else starts it if it is not already running and
-  /// otherwise just moves the fader — so a caller can push the sea up as the
-  /// storm gathers without knowing whether it has begun.
-  ///
-  /// Its own verb rather than `play(loop: true)`: a bed and a cue are
-  /// different things. One marks a moment and ends; the other is the room,
-  /// and the only question anybody asks of it is how loud.
-  Future<void> bed(AudioCue cue, double level);
 
   /// Silences everything without unloading it.
   void setMuted(bool muted);
@@ -145,8 +127,6 @@ class SilentAudio implements AppAudio {
   Future<void> preload() async {}
   @override
   void play(AudioCue cue, {double? volume}) {}
-  @override
-  Future<void> bed(AudioCue cue, double level) async {}
   @override
   void setMuted(bool muted) {}
   @override

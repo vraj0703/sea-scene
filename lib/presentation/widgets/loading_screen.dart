@@ -15,12 +15,24 @@ import 'package:sea_scene/domain/style/text_styles.dart';
 /// column is centred, so a child that stops occupying space shortens it and
 /// snaps the readout downward mid-reveal.
 class LoadingScreen extends StatelessWidget {
-  const LoadingScreen({required this.progress, this.exit = 0, super.key});
+  const LoadingScreen({
+    required this.progress,
+    required this.isReady,
+    this.exit = 0,
+    this.onEnter,
+    super.key,
+  });
 
   final LoadingProgress progress;
 
+  /// Whether everything is loaded and the curtain is only waiting to be asked.
+  final bool isReady;
+
   /// How far the curtain has opened, `0`..`1`.
   final double exit;
+
+  /// Called when the visitor accepts the invitation.
+  final VoidCallback? onEnter;
 
   @override
   Widget build(BuildContext context) {
@@ -28,13 +40,20 @@ class LoadingScreen extends StatelessWidget {
     // uncovered rather than fading over it.
     final lift = Curves.easeIn.transform((exit / 0.4).clamp(0.0, 1.0));
 
-    return IgnorePointer(
+    return GestureDetector(
+      // Opaque and full-bleed, because the invitation is the whole screen
+      // rather than the words in the middle of it — a visitor told to tap
+      // should not have to find a target.
+      behavior: HitTestBehavior.opaque,
+      onTap: isReady ? onEnter : null,
       child: Center(
         child: Transform.translate(
           offset: Offset(0, -8 * lift),
           child: Opacity(
             opacity: (1 - lift).clamp(0.0, 1.0),
-            child: _Readout(progress: progress.value),
+            child: isReady
+                ? _Invitation(text: context.strings.tapToEnter)
+                : _Readout(progress: progress.value),
           ),
         ),
       ),
@@ -77,6 +96,27 @@ class _Readout extends StatelessWidget {
           style: type.loadingReadout.copyWith(color: ink),
         ),
       ],
+    );
+  }
+}
+
+/// What the curtain says once it is only waiting to be asked.
+///
+/// The bar is gone by this point rather than sitting at a hundred per cent:
+/// a full bar is a statement about the past, and what the screen needs to say
+/// now is what to do next.
+class _Invitation extends StatelessWidget {
+  const _Invitation({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: context.typography.loading.copyWith(
+        color: context.colors.loadingText,
+      ),
     );
   }
 }

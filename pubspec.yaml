@@ -66,9 +66,16 @@ flutter:
 
   assets:
     - assets/audio/
+    - assets/images/
 
   shaders:
     - assets/shaders/beach.frag
+    - assets/shaders/metallic_text.frag
+
+  fonts:
+    - family: ModrntUrban
+      fonts:
+        - asset: fonts/modrnt_urban.otf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

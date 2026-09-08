@@ -21,35 +21,39 @@ class FlameAppAudio implements AppAudio {
   /// The four cards are a rising scale, and the title is the note under it.
   /// Naming them by their moment rather than their pitch is what lets the
   /// scale be re-voiced without touching a call site.
+  /// The scale, in the order the scene plays it.
+  ///
+  /// `do re mi fa si sol` — the sequence asked for. Worth noting it is not
+  /// quite an ascending scale: `si` is the seventh and `sol` the fifth, so the
+  /// last two step *down*. That is a real musical choice rather than a slip,
+  /// and it resolves downward at the end instead of running off the top; if
+  /// the intent was to keep climbing, swapping these two lines is the whole
+  /// of the change.
   static const Map<AudioCue, String> _files = <AudioCue, String>{
-    AudioCue.arrival: 'do.mp3',
-    AudioCue.cardOne: 're.mp3',
-    AudioCue.cardTwo: 'mi.mp3',
-    AudioCue.cardThree: 'fa.mp3',
-    AudioCue.cardFour: 'si.mp3',
-    AudioCue.flip: 'whoosh.mp3',
-    AudioCue.follow: 'sol.mp3',
+    AudioCue.mark: 'do.mp3',
+    AudioCue.title: 're.mp3',
+    AudioCue.cardOne: 'mi.mp3',
+    AudioCue.cardTwo: 'fa.mp3',
+    AudioCue.cardThree: 'si.mp3',
+    AudioCue.cardFour: 'sol.mp3',
+    AudioCue.follow: 'harp_enter.mp3',
     AudioCue.thunderCrack: 'thunder_crack.mp3',
     AudioCue.thunderRoll: 'thunder_roll.mp3',
-    AudioCue.sea: 'rumble.mp3',
     AudioCue.drop: 'waterdrop.mp3',
   };
 
   static const Map<AudioCue, double> _volumes = <AudioCue, double>{
-    AudioCue.arrival: 0.5,
+    AudioCue.mark: 0.5,
+    AudioCue.title: 0.5,
     AudioCue.cardOne: 0.45,
     AudioCue.cardTwo: 0.45,
     AudioCue.cardThree: 0.45,
     AudioCue.cardFour: 0.45,
-    // Under the note it accompanies. The flip is the sound of the card
-    // moving, not the sound of the card arriving.
-    AudioCue.flip: 0.3,
     AudioCue.follow: 0.5,
-    // Weather sits above everything else on purpose: a strike that is politely
-    // quiet is not a strike.
+    // Weather sits above everything else on purpose: a strike that is
+    // politely quiet is not a strike.
     AudioCue.thunderCrack: 0.7,
     AudioCue.thunderRoll: 0.55,
-    AudioCue.sea: 0.35,
     AudioCue.drop: 0.4,
   };
 
@@ -65,15 +69,6 @@ class FlameAppAudio implements AppAudio {
   bool _muted = false;
   bool _preloaded = false;
 
-  /// The bed, once it is running, and how loud it was asked to be.
-  ///
-  /// The level is remembered separately from the player because muting must
-  /// not lose it: silence is a fader at zero, and unmuting has to put it back
-  /// where the scene left it rather than at some default.
-  AudioPlayer? _bedPlayer;
-  AudioCue? _bedCue;
-  double _bedLevel = 0;
-
   @override
   bool get isMuted => _muted;
 
@@ -82,11 +77,21 @@ class FlameAppAudio implements AppAudio {
     if (_preloaded) return;
     _preloaded = true;
 
-    try {
-      await FlameAudio.audioCache.loadAll(_files.values.toList());
-    } catch (error, stack) {
-      // Not fatal: the first play simply fetches instead.
-      _report('preload failed', error, stack);
+    // One at a time, not `loadAll`.
+    //
+    // `loadAll` gives up on the first file it cannot fetch, so a single
+    // missing asset takes every cue after it down with it — and the failure
+    // is silent, because warming the cache is best-effort. Two files had been
+    // pruned from the folder while still named here, and the whole scene went
+    // quiet rather than losing two sounds.
+    for (final file in _files.values) {
+      try {
+        await FlameAudio.audioCache.load(file);
+      } catch (error, stack) {
+        // Not fatal on its own: the first play of *this* cue simply fetches
+        // instead, and every other cue is unaffected.
+        _report('preload of $file failed', error, stack);
+      }
     }
   }
 
@@ -128,49 +133,11 @@ class FlameAppAudio implements AppAudio {
   }
 
   @override
-  Future<void> bed(AudioCue cue, double level) async {
-    final wanted = level.clamp(0.0, 1.0);
-    _bedCue = cue;
-    _bedLevel = wanted;
-
-    final file = _files[cue];
-    if (file == null) return;
-
-    try {
-      if (wanted <= 0) {
-        await _bedPlayer?.stop();
-        _bedPlayer = null;
-        return;
-      }
-
-      // Started at silence and faded up, never started at the level asked
-      // for: a loop that begins at full volume begins with a click, and the
-      // one sound the visitor never chose to hear should not announce itself.
-      _bedPlayer ??= await FlameAudio.loop(file, volume: 0);
-      await _bedPlayer?.setVolume(_muted ? 0 : wanted * (_volumes[cue] ?? 1));
-    } catch (error, stack) {
-      _report('bed $file failed', error, stack);
-      _bedPlayer = null;
-    }
-  }
-
-  @override
-  void setMuted(bool muted) {
-    _muted = muted;
-
-    // The bed is the only sound that outlives the moment it started, so it is
-    // the only one muting has to reach into. Everything else simply stops
-    // being fired.
-    final cue = _bedCue;
-    if (cue == null) return;
-    unawaited(bed(cue, _bedLevel));
-  }
+  void setMuted(bool muted) => _muted = muted;
 
   @override
   Future<void> dispose() async {
     try {
-      await _bedPlayer?.stop();
-      _bedPlayer = null;
       FlameAudio.audioCache.clearAll();
     } catch (error, stack) {
       _report('dispose failed', error, stack);

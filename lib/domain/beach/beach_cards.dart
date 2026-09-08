@@ -16,8 +16,12 @@ class BeachCard {
     this.url,
   });
 
-  /// Drawn rather than set: an emoji carries its own colour, which is what
-  /// makes four of them legible against a moving background.
+  /// The card's mark, as an asset.
+  ///
+  /// A drawn sprite rather than an emoji, because these are reflected: the
+  /// water samples whatever the cards drew, and an emoji is rendered by the
+  /// platform's own font at whatever size it likes — the same glyph would come
+  /// back different above the waterline and below it.
   final String icon;
 
   final String title;
@@ -42,7 +46,7 @@ class BeachCard {
 abstract final class BeachCards {
   static const List<BeachCard> all = <BeachCard>[
     BeachCard(
-      icon: '📄',
+      icon: 'assets/images/bill.png',
       title: 'Resume',
       description:
           'Download my resume for a detailed overview of my experience, '
@@ -51,7 +55,7 @@ abstract final class BeachCards {
       accent: Color(0xFF00FFFF),
     ),
     BeachCard(
-      icon: '💼',
+      icon: 'assets/images/linkedin.png',
       title: 'LinkedIn',
       description:
           'Connect with me on LinkedIn for professional updates, '
@@ -61,7 +65,7 @@ abstract final class BeachCards {
       url: 'https://www.linkedin.com/in/vraj0703/',
     ),
     BeachCard(
-      icon: '🐙',
+      icon: 'assets/images/github.png',
       title: 'GitHub',
       description:
           'Explore my open-source contributions, side projects, and code '
@@ -71,7 +75,7 @@ abstract final class BeachCards {
       url: 'https://github.com/vraj0703',
     ),
     BeachCard(
-      icon: '✉️',
+      icon: 'assets/images/gmail.png',
       title: 'Email',
       description:
           'Reach out via email for collaborations, opportunities, or just to '

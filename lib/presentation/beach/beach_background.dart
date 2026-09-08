@@ -3,7 +3,6 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 import 'package:sea_scene/domain/beach/beach_config.dart';
 import 'package:sea_scene/presentation/beach/beach_weather.dart';
-import 'package:sea_scene/presentation/beach/title_plate.dart';
 
 /// The sea, the sky and everything in them, drawn by `beach.frag`.
 ///
@@ -39,14 +38,17 @@ class BeachBackground extends PositionComponent {
   /// with it.
   double _progress = 0;
 
-  /// The name, and the thing the water reflects.
+  /// What the water is mirroring.
   ///
-  /// The same picture does both jobs, because the shader samples the
-  /// reflection in *screen space* — whatever is in the sampler appears in the
-  /// water where it sits in the image. Drawing the title by one path and
-  /// reflecting another would put the name and its reflection in different
-  /// places.
-  TitlePlate? _title;
+  /// The cards, photographed where they stand. The shader samples this in
+  /// *screen space*, so whatever is in it appears in the water at the place
+  /// it occupies on screen — which is why the picture has to come from the
+  /// cards themselves rather than being drawn a second time here.
+  ///
+  /// The name is deliberately not in it. It was, and a title reflected
+  /// through a bloom that lightning multiplies by twenty is a smear lying on
+  /// the sea rather than a reflection of anything.
+  Image? _reflection;
 
   /// The shader needs a sampler bound on every draw — an unbound one is
   /// undefined behaviour, not an empty one — so a single pixel stands in
@@ -59,8 +61,8 @@ class BeachBackground extends PositionComponent {
   double get waterY => _waterY;
   double get time => _time;
 
-  /// Whether the name is up.
-  bool get hasTitle => _title != null;
+  /// Whether the water has anything to mirror yet.
+  bool get hasReflection => _reflection != null;
 
   @override
   Future<void> onLoad() async {
@@ -100,23 +102,21 @@ class BeachBackground extends PositionComponent {
 
   void setProgress(double progress) => _progress = progress.clamp(0.0, 1.0);
 
-  /// Hands the scene its name, and the water something to mirror.
+  /// Hands the water a new picture to mirror.
   ///
-  /// The old plate is released here rather than by the caller: this is the
-  /// only thing that knows when the shader has stopped sampling it.
-  void showTitle(TitlePlate plate) {
-    final previous = _title;
-    _title = plate;
-
-    // Released *after* the swap, never before — freeing what the next draw is
-    // about to sample leaves a frame reading from nothing.
-    if (!identical(previous, plate)) previous?.dispose();
+  /// The previous one is released here rather than by the caller: this is the
+  /// only thing that knows when the shader has stopped sampling it. Released
+  /// *after* the swap, never before — freeing what the next draw is about to
+  /// read leaves a frame sampling nothing.
+  void reflect(Image image) {
+    final previous = _reflection;
+    _reflection = image;
+    if (!identical(previous, image)) previous?.dispose();
   }
 
   @override
   void render(Canvas canvas) {
-    final plate = _title;
-    final sampler = plate?.image ?? _blank;
+    final sampler = _reflection ?? _blank;
 
     // Nothing to bind means nothing safe to draw. It happens for exactly one
     // frame, between mounting and `onLoad` finishing.
@@ -146,16 +146,6 @@ class BeachBackground extends PositionComponent {
       ..setImageSampler(BeachUniform.reflection, sampler);
 
     canvas.drawRect(size.toRect(), Paint()..shader = shader);
-
-    // The name itself, over the sea the shader just drew. Its reflection is
-    // already in that sea — the shader put it there from this same image.
-    if (plate != null) {
-      canvas.drawImage(
-        plate.image,
-        Offset.zero,
-        Paint()..color = Color.fromRGBO(255, 255, 255, opacity.clamp(0.0, 1.0)),
-      );
-    }
   }
 
   /// The surface's own pixel size, when the component is mounted in a game.

@@ -545,8 +545,14 @@ vec3 RenderPerspectiveReflection(vec2 logicalCoord) {
     float jitter = ambientWave + lightningJitter;
 
     // 2. WIDE-TO-NARROW PERSPECTIVE WARP
-    // Reduced stretch from 0.45 to 0.30 for tighter reflection spacing
-    float stretch = 0.30;
+    // How far below the horizon the whole reflected image is spread. The
+    // plate is a full screen, so this decides where anything standing above
+    // the water lands beneath it: at 0.30 a title just above the horizon was
+    // thrown a third of the screen down, past the ship and into the cards,
+    // which reads as a glow lying on the scene rather than as a reflection of
+    // something. Tightened so the mirror sits against the waterline it
+    // belongs to.
+    float stretch = 0.12;
     float vCoord = 1.0 - (distToHorizon / (uSize.y * stretch));
 
     // --- NARROWING LOGIC ---

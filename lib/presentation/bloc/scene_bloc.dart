@@ -21,6 +21,7 @@ part 'scene_state.dart';
 class SceneBloc extends Bloc<SceneEvent, SceneState> implements Queuer {
   SceneBloc() : super(const Loading()) {
     on<LoadingProgressed>(_onLoadingProgressed);
+    on<EntryRequested>(_onEntryRequested);
     on<RevealCompleted>(_onRevealCompleted);
   }
 
@@ -46,7 +47,18 @@ class SceneBloc extends Bloc<SceneEvent, SceneState> implements Queuer {
 
     emit(Loading(progress: next));
 
-    if (next.isComplete) emit(const Beach());
+    // Loaded, not entered. The curtain waits for a tap.
+    if (next.isComplete) emit(const Ready());
+  }
+
+  FutureOr<void> _onEntryRequested(
+    EntryRequested event,
+    Emitter<SceneState> emit,
+  ) {
+    // Guarded like every other transition: the invitation only exists on the
+    // stage that offers it, and a tap on the sea afterwards is a ripple.
+    if (state is! Ready) return null;
+    emit(const Beach());
   }
 
   FutureOr<void> _onRevealCompleted(
