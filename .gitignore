@@ -46,3 +46,7 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# The Firebase CLI's local deploy cache. Machine-specific, and it grows
+# a hash of every uploaded file — nothing another checkout can use.
+.firebase/

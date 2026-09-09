@@ -1,0 +1,60 @@
+name: Test & Deploy
+
+# The sea scene, shipped to its own Firebase Hosting site.
+#
+# Deliberately independent of the portfolio and of the space scene: its own
+# repository, its own Firebase project, its own site and its own domain.
+# Firebase Hosting replaces a site's entire contents on every deploy — there
+# is no partial deploy of one path — so sharing a site with anything else
+# would mean each deploy wiping the other's output.
+#
+# Analyse and test run on every push and pull request; only a push to master
+# deploys. A red test stops the release, because the deploy step runs in the
+# same job and a failed step ends it.
+
+# Both names on purpose. The default branch is `master` today; listing `main`
+# as well means a rename in GitHub's settings does not silently stop
+# publishing, which is the kind of breakage nobody notices until a change is
+# missing from the live site.
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  ship:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pinned to the version this is built and tested against locally. Bump
+      # it deliberately with your own upgrade, not on a floating channel — the
+      # shaders this scene draws with are version-sensitive, and a runner that
+      # silently moves ahead breaks the build with no commit to blame.
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.1'
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - run: flutter analyze
+
+      - run: flutter test
+
+      # No `--base-href`: the scene has a domain to itself, so it is served
+      # from the root. It would need one only if it lived under a path.
+      - run: flutter build web --release
+
+      - name: Deploy to Firebase
+        if: >-
+          github.event_name == 'push' &&
+          (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_VISHALRAJ_SEA_SCENE }}
+          channelId: live
+          projectId: vishalraj-sea-scene
