@@ -114,7 +114,7 @@ class _Invitation extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: context.typography.loading.copyWith(
+      style: context.typography.enter.copyWith(
         color: context.colors.loadingText,
       ),
     );

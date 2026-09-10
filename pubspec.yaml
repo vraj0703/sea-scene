@@ -73,6 +73,28 @@ flutter:
     - assets/shaders/metallic_text.frag
 
   fonts:
+    # The portfolio's own faces, so the three sites read as one hand. Each is
+    # used for the same job here that it does there: the mono for the loading
+    # label, a second mono for the figure beside it, Apertura for the small
+    # tracked lines, Margot for anything that is a sentence.
+    - family: MonoLoading
+      fonts:
+        - asset: fonts/mono_loading.ttf
+    - family: AzeretMono
+      fonts:
+        - asset: fonts/azeretmono.ttf
+    - family: Apertura
+      fonts:
+        - asset: fonts/aperturaregular.ttf
+    # Both weights under one family, so a style asks for the weight it wants
+    # and Flutter picks the file. Two families would mean every style naming
+    # the exact cut, and a `fontWeight` that quietly did nothing.
+    - family: Margot
+      fonts:
+        - asset: fonts/Margot-Regular.ttf
+        - asset: fonts/Margot-Bold.ttf
+          weight: 700
+    # The name across the horizon, as the portfolio sets its own title.
     - family: ModrntUrban
       fonts:
         - asset: fonts/modrnt_urban.otf
