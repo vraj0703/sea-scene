@@ -18,9 +18,10 @@ class SeaSceneApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const colors = DefaultAppColors();
+    const strings = DefaultAppStrings();
 
     return MaterialApp(
-      title: 'Get in touch',
+      title: strings.appTitle,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         scaffoldBackgroundColor: colors.backdrop,
@@ -29,7 +30,7 @@ class SeaSceneApp extends StatelessWidget {
         extensions: <ThemeExtension<dynamic>>[
           const AppColorsExtension(colors: colors),
           const AppTypographyExtension(typography: DefaultAppTypography()),
-          const AppStringsExtension(strings: DefaultAppStrings()),
+          const AppStringsExtension(strings: strings),
           AppAudioExtension(audio: locate<AppAudio>()),
         ],
       ),

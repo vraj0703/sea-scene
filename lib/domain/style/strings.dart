@@ -6,6 +6,14 @@ import 'package:flutter/material.dart';
 /// the site says can be read in one file — and changed without opening a
 /// widget.
 abstract class AppStrings {
+  /// What the browser tab says.
+  ///
+  /// The same words as [title] but a separate string, because they answer
+  /// different questions: one is the name drawn in the scene, the other is how
+  /// the site identifies itself among a row of tabs. All three sites give the
+  /// same answer to the second, which is the point.
+  String get appTitle;
+
   String get loadingLabel;
   String loadingPercent(double progress);
 
@@ -18,6 +26,9 @@ abstract class AppStrings {
 
 class DefaultAppStrings implements AppStrings {
   const DefaultAppStrings();
+
+  @override
+  String get appTitle => 'Vishal Raj';
 
   @override
   String get loadingLabel => 'LOADING...';
